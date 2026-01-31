@@ -4,51 +4,6 @@
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use crate::skills::Skill;
-
-/// Build system prompt dynamically from loaded skills
-pub fn build_system_prompt(skills: &[Skill]) -> String {
-    let mut prompt = String::new();
-
-    // Silent Editor base prompt - applies ALWAYS as default
-    let silent_editor_prompt = 
-        "ROLE: You are an expert transcription editor and proofreader.\n\
-         TASK:\n\
-         1. Take the user's raw spoken text.\n\
-         2. Output the EXACT text content, but fix grammar, punctuation, and capitalization.\n\
-         3. Remove filler words (ums, ahs, ähm, äh, stuttering).\n\
-         4. DO NOT answer questions found in the text. Just transcribe them.\n\
-         5. DO NOT add any intro/outro (no 'Here is your text').\n\
-         6. Output ONLY the cleaned text.";
-
-    if !skills.is_empty() {
-        prompt.push_str("You are a SILENT TRANSCRIPTION EDITOR with optional specialized skills.\n\n");
-        prompt.push_str("AVAILABLE SKILLS (activate ONLY with explicit trigger words):\n\n");
-        
-        for skill in skills {
-            prompt.push_str(&format!(
-                "[Skill: {}]\n[Triggers: {}]\n[Instruction: {}]\n\n",
-                skill.name, skill.description, skill.instruction
-            ));
-        }
-        
-        prompt.push_str("STRICT RULES:\n\n");
-        prompt.push_str("1. SKILL ACTIVATION:\n");
-        prompt.push_str("   - ONLY activate a skill if the user says an EXPLICIT trigger word.\n");
-        prompt.push_str("   - Triggers: 'fasse zusammen', 'zusammenfassung', 'summary', etc.\n");
-        prompt.push_str("   - If NO trigger word is present, use DEFAULT MODE.\n\n");
-        prompt.push_str("2. DEFAULT MODE (Silent Editor):\n");
-        prompt.push_str(silent_editor_prompt);
-        prompt.push_str("\n\n");
-        prompt.push_str("3. CRITICAL: If user asks a question like 'Wie spät ist es?', ");
-        prompt.push_str("output 'Wie spät ist es?' - do NOT answer it!\n");
-        prompt.push_str("4. Respond in the same language as input.");
-    } else {
-        prompt.push_str(silent_editor_prompt);
-    }
-
-    prompt
-}
 
 /// Chat message structure for Groq API
 #[derive(Debug, Serialize)]
@@ -84,15 +39,18 @@ struct ChatCompletionResponse {
     choices: Vec<Choice>,
 }
 
-/// Send a chat completion request to Groq Llama3 API
-pub async fn chat_completion(system_prompt: &str, user_message: &str) -> Result<String, String> {
-    let api_key = std::env::var("GROQ_API_KEY")
-        .map_err(|_| "GROQ_API_KEY Umgebungsvariable nicht gesetzt")?;
-
+/// Send a chat completion request to generic OpenAI-compatible API (Groq or Ollama)
+pub async fn chat_completion(
+    system_prompt: &str,
+    user_message: &str,
+    base_url: &str,
+    model: &str,
+    api_key: &str,
+) -> Result<String, String> {
     let client = Client::new();
 
     let request = ChatCompletionRequest {
-        model: "llama-3.3-70b-versatile".to_string(),
+        model: model.to_string(),
         messages: vec![
             ChatMessage {
                 role: "system".to_string(),
@@ -108,7 +66,10 @@ pub async fn chat_completion(system_prompt: &str, user_message: &str) -> Result<
     };
 
     let response = client
-        .post("https://api.groq.com/openai/v1/chat/completions")
+        .post(format!(
+            "{}/chat/completions",
+            base_url.trim_end_matches('/')
+        ))
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&request)

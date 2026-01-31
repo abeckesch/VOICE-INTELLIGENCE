@@ -1,73 +1,79 @@
-# Spezifikation: Voice Intelligence Desktop App (Performance & Value Edition)
+# Spezifikation: Voice Intelligence Desktop App (Final Build)
 
 ## 1. High-Level Ziel
-Eine blitzschnelle Desktop-Anwendung ("Voice HUD"), die gesprochene Sprache in perfekt formatierten Text verwandelt. Fokus: Maximale Ergebnisqualität bei minimaler Latenz und geringsten Betriebskosten.
+Eine blitzschnelle Desktop-Anwendung ("Voice HUD"), die gesprochene Sprache in perfekt formatierten Text verwandelt. 
+Fokus: Maximale Geschwindigkeit (Cloud) oder maximale Privatsphäre (Local).
 
 ## 2. Core User Loop
 1.  **Trigger:** Globaler Hotkey (z. B. `Alt+Space`).
 2.  **Input:** Minimalistisches Overlay (HUD). Nutzer spricht.
-3.  **Processing (High-Speed Cloud Pipeline):**
-    *   **Audio:** Upload zu Whisper v3 Turbo (via Groq).
-    *   **Intelligence:** Transkript wird an **Groq Llama3** gesendet.
-    *   **Routing & Generation:** Ein einziger LLM-Call entscheidet über den "Skill" (z. B. E-Mail, Code, Notiz) und generiert den Output.
+3.  **Processing (Dual-Engine Strategie):**
+    *   **Input Gate:** Audio -> Micro -> VAD (Silence Guard).
+    *   **Branch A (Cloud):** Audio -> Groq Whisper -> Groq Llama3 -> UI.
+    *   **Branch B (Local):** Audio -> Whisper.cpp -> Ollama (Llama3) -> UI.
+    *   **Branch C (Raw):** Audio -> Whisper -> UI (Bypass LLM).
 4.  **Output:** Text wird via Keyboard-Simulation an der Cursor-Position eingefügt + Clipboard-Backup.
 
 ## 3. Technische Anforderungen & Stack
 
 ### A. Frontend / Runtime
 *   **Stack:** Next.js (React) + Tauri v2.
-*   **Begründung:** Tauri bietet native Performance und globalen Hotkey-Support bei minimalem Speicherbedarf.
+*   **Begründung:** Native Performance, kleiner Footprint (~3MB Installer), globale Hotkeys.
 
-### B. AI Pipeline (Groq-Only Strategy)
-*   **STT (Speech-to-Text):** `Whisper v3 Turbo` via Groq. Ziel für Latenz: < 500ms.
-*   **LLM (Inferenz):** `Llama3` via Groq.
-    *   *Warum:* Bietet extreme Geschwindigkeit bei hoher Qualität.
-    *   *Modell:* Vorzugsweise Llama3-70B für hohe Qualität oder Llama3-8B für maximale Geschwindigkeit.
-*   **Abgrenzung:** Wir nutzen Groq als Single-Provider für die gesamte Pipeline, um die Latenz durch minimierten Netzwerk-Overhead zu optimieren.
+### B. Architecture Modes
 
-### C. Skill-System ("Antigravity" Pattern)
-*   **Struktur:** Skills werden als Markdown-Dateien in `/skills` definiert (z.B. `/skills/email/SKILL.md`).
-*   **Router-Logik:** Der System-Prompt injiziert die Beschreibungen aller Skills. Das LLM wählt den Skill und führt ihn in einem Durchgang aus (Chain-of-Thought), um Latenz zu sparen.
-*   **Fallback-Verhalten ("Silent Editor"):** Wenn kein Skill erkannt wird, fungiert das System als reiner Editor:
-    *   Korrektur von Grammatik, Interpunktion und Groß-/Kleinschreibung.
-    *   Entfernung von Füllwörtern (ähm, äh, uhm).
-    *   Keine Meta-Kommentare oder Chatbot-Antworten.
+#### 1. Cloud Mode (Default)
+Nutzt die extrem schnelle Infrastruktur von Groq.
+*   **STT:** `Whisper v3 Turbo` (Groq API).
+*   **LLM:** `Llama3-70B` (Groq API).
+*   **Vorteil:** Latenz < 1s, State-of-the-Art Qualität.
 
-## 4. User Experience (UX) Goals
-*   **Harte Anforderung:** Gesamtlatenz (Sprechende -> Textstart) **< 2 Sekunden**.
+#### 2. Local Mode (Privacy / BYOE)
+"Bring Your Own Engine" - für User mit hohen Privacy-Anforderungen.
+*   **STT:** `whisper-CLI` (lokale Binary, z.B. whisper.cpp).
+*   **LLM:** `Ollama` (lokaler Server, z.B. llama3).
+*   **Konfiguration:** User muss Pfade zu Binary und Modell in den Settings hinterlegen.
+*   **Vorteil:** 100% Offline, keine Daten verlassen das Gerät.
+
+#### 3. Raw Mode (Bypass)
+Reines Diktat ohne intelligente Nachbearbeitung.
+*   **Flow:** Audio -> STT -> Text Output.
+*   **Use Case:** Schnellstmögliche Transkription, Rohdaten.
+
+### C. Skill-System
+Skills sind spezialisierte Verarbeitungs-Pipelines.
+1.  **Standard (Silent Editor):** Korrektur von Grammatik/Rechtschreibung. Kein Chat-Verhalten.
+2.  **Zusammenfassung:** Erstellt Bullet Points aus dem Gesagten.
+3.  **Business Polish:** Formuliert Umgangssprache in professionelles Business-Deutsch um.
+4.  **Action Items:** Extrahiert To-Dos in eine Markdown-Liste.
+
+### D. Quality Gates
+*   **Silence Guard:** VAD (Voice Activity Detection) basierend auf RMS-Amplitude. Verwirft stille Aufnahmen (< 150ms RMS) sofort, um Kosten und Halluzinationen zu vermeiden.
+*   **Hallucination Filter:** Filtert bekannte Whisper-Artefakte (z.B. "Thank you", "Subtitles by...") aus kurzen Aufnahmen.
+
+## 4. User Experience (UX)
 
 ### UI Design: Floating Capsule HUD
-*   **Grundlayout:**
-    *   Always-on-top Overlay, bottom-center positioniert.
-    *   Pillenschiff/Capsule Design (rounded-full).
-    *   Minimale Größe (ca. 400x60px), blockiert nicht den Arbeitsbereich.
-    *   Backdrop-blur Glassmorphism Ästhetik (bg-black/80, backdrop-blur-md).
-    *   Dezente Border (border-white/10).
+*   **Visuals:** Glassmorphism, Rounded-Full, Bottom-Center.
+*   **States:**
+    1.  **Idle:** "Bereit" (Grauer Dot)
+    2.  **Recording:** "Höre zu..." (Roter Pulse + Visualizer)
+    3.  **Processing:** "Verarbeite..." (Amber Pulse)
+    4.  **Success:** "Gesendet" (Grüner Check)
+    5.  **Paused:** Settings offen (Amber Border, Flatline)
 
-### UI-Zustände (State Machine):
-1.  **Idle:** Kleiner, pulsierender weißer Punkt. Text: "Bereit".
-2.  **Recording:** 
-    *   Roter pulsierender Punkt.
-    *   Audio-Visualizer mit 5-7 dynamischen Balken, die auf Lautstärke reagieren.
-    *   Text: "Höre zu..."
-3.  **Processing:** 
-    *   Gelber/Amber pulsierender Punkt.
-    *   Optionaler Spinner oder Animation.
-    *   Text: "Verarbeite..."
-4.  **Success/Error:** 
-    *   Kurzes Feedback (✓ grün / ✗ rot) für 500ms vor dem Schließen.
+### Privacy Indikator
+*   **Cloud Mode:** Cyan/Blaues Theme.
+*   **Local Mode:** Violettes/Lila Theme (Incognito).
 
-*   **Visuals:** Das Overlay muss "snappy" reagieren. Keine Ladespinner, sondern progressive Zustandsanzeige.
-
-## 5. Abgrenzung
-*   Keine lokale Inferenz (zu langsam auf Standard-Hardware).
-*   Kein komplexes User-Management (API-Keys in `.env`).
-
-## 6. App-Architektur: Tray-based Application with Overlay HUD
-
-*   **Konzept:** Die App verhält sich wie ein System-Widget/HUD, nicht wie ein traditionelles Fenster.
-*   **System Tray:** Ein Tray-Icon ermöglicht schnellen Zugriff (Show/Hide, Quit).
-*   **Taskbar-Verhalten:** Das Overlay erscheint nicht in der Windows-Taskbar (`skipTaskbar: true`).
-*   **Fokus-Management:** Das Fenster klaut beim Start keinen Fokus und "lauert" im Hintergrund bis der Hotkey (Alt+Space) aktiviert wird.
-*   **Windows-Integration:** Durch `skipTaskbar` wird das Fenster als Widget behandelt und bleibt bei "Show Desktop" (Win+D) sichtbar.
-
+## 5. Projektstruktur
+```
+voice-intelligence/
+├── src-tauri/              # Rust Backend (Core Logic)
+│   ├── src/llm/            # API Clients (Groq, Ollama) & Prompts
+│   └── src/input/          # Keyboard Injection
+├── src/                    # React Frontend (UI)
+│   ├── components/         # HUD, Visualizer, Settings
+│   └── hooks/              # Audio Recorder, State Logic
+└── .env                    # API Keys
+```

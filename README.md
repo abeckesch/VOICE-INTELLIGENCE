@@ -1,168 +1,109 @@
-# 🎙️ Voice Intelligence HUD (Antigravity)
+# Voice Intelligence Capsule
 
-> Eine Desktop-App, die Spracheingaben lokal aufnimmt, via Groq (Whisper) transkribiert und durch ein modulares Skill-System (Llama 3) verarbeitet – für nahtlose Integration in deinen Workflow.
+> **Local-First Voice Dictation & AI Processing**
 
----
+![Tauri v2](https://img.shields.io/badge/Tauri_v2-FCC019?style=for-the-badge&logo=tauri&logoColor=black)
+![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
+![Local AI](https://img.shields.io/badge/Local_AI-Privacy-purple?style=for-the-badge)
+![Privacy Focused](https://img.shields.io/badge/Privacy-Focused-success?style=for-the-badge)
 
-## 🎯 Das Problem
-
-Spracheingabe am Desktop ist umständlich: Entweder diktiert man in eine App, kopiert manuell, oder nutzt klobige Assistenten, die den Workflow unterbrechen. **Voice Intelligence** löst das durch ein **immer bereites HUD**, das per Hotkey erscheint und den verarbeiteten Text direkt an der Cursor-Position einfügt.
-
----
-
-## 🏗️ Architektur
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  FRONTEND (React + Vite)                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │ Audio Capture│  │ Visualizer   │  │ Status Indicator   │  │
-│  │ (Web Audio)  │  │ (CSS + TS)   │  │ (idle/rec/proc)    │  │
-│  └──────────────┘  └──────────────┘  └────────────────────┘  │
-└───────────────────────────┬──────────────────────────────────┘
-                            │ Tauri IPC
-┌───────────────────────────▼──────────────────────────────────┐
-│  BACKEND (Rust + Tauri v2)                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │ Global Hotkey│  │ Groq APIs    │  │ Keyboard Injection │  │
-│  │ (Alt+Space)  │  │ Whisper+LLM  │  │ (enigo crate)      │  │
-│  └──────────────┘  └──────────────┘  └────────────────────┘  │
-│                           │                                   │
-│              ┌────────────▼────────────┐                      │
-│              │  🧠 Antigravity Skills  │                      │
-│              │  (Markdown-basiert)     │                      │
-│              └─────────────────────────┘                      │
-└──────────────────────────────────────────────────────────────┘
-```
-
-| Layer | Technologie | Aufgabe |
-|-------|-------------|---------|
-| **Frontend** | React, Vite, Tailwind CSS | UI, Audio-Visualizer, Status-Anzeige |
-| **Backend** | Rust, Tauri v2 | Hotkeys, API-Aufrufe, System-Integration |
-| **AI Pipeline** | Groq Whisper v3 + Llama 3.3 70B | Transkription + Intelligente Verarbeitung |
-| **Skills** | Markdown-Dateien (`/skills`) | Erweiterbare Logik-Module |
+**Problem:** Traditional voice dictation tools send your sensitive audio data to the cloud, creating privacy risks and dependencies on internet connectivity.
+**Solution:** The Voice Intelligence Capsule implements a **Dual-Engine Architecture**. Choose between **Groq Cloud** for lightning-fast latency (<1s) or **Local Mode** for absolute data sovereignty (Air-Gapped).
 
 ---
 
-## 💡 Design-Entscheidungen
+## 🏗️ Architecture Decision Record (ADR): The Dual Engine
 
-### Tauri statt Electron
-- **Binary-Größe:** ~2.8 MB (NSIS) vs. 150+ MB bei Electron
-- **Performance:** Native Rust-Backend, kein Chromium-Overhead
-- **Sicherheit:** Capabilities-System für granulare Berechtigungen
+We built this application on a core philosophy: **User Control**. We do not bundle AI models; we provide the engine to run them. This "Bring Your Own Engine" (BYOE) approach ensures you are never locked into a specific provider or model version.
 
-### Tray-Only Architektur
-- Kein permanentes Fenster – das HUD erscheint nur bei Bedarf
-- Minimaler Fokus-Verlust: Alt+Space → Sprechen → Text erscheint
+### A. ⚡ Cloud Mode (Speed)
+Leverages the **Groq LPU™ Inference Engine**.
+*   **STT:** Whisper v3 Turbo.
+*   **LLM:** Llama3-70B.
+*   **Result:** Usable text in under 1 second. Ideal for general emails, coding, and rapid tasks where data sensitivity is low.
 
-### Silent Editor Mode
-- **Standard:** Die KI korrigiert nur (Grammatik, Formatierung) – kein Chatbot
-- **Skills:** Explizite Trigger wie *"Fasse zusammen"* aktivieren Spezialfunktionen
-- **Vorteil:** Vorhersagbares Verhalten, keine unerwarteten Antworten
-
-### Hybrid Language Heuristic
-- **Kurze Aufnahmen (<4s):** Nutzt Deutsch (verhindert Whisper-Halluzinationen)
-- **Längere Aufnahmen:** Auto-Detect (ermöglicht Mehrsprachigkeit)
+### B. 🛡️ Local Mode (Privacy)
+Runs 100% on your device. **No data leaves your machine.**
+*   **STT:** Local `whisper-cli` (C++ implementation via whisper.cpp).
+*   **LLM:** Local `Ollama` instance.
+*   **Result:** Complete offline capability. Ideal for NDA-protected work, medical/legal dictation, or unstable connections.
 
 ---
 
-## 🛠️ Setup & Installation
+## ✨ Feature Highlights
 
-### Prerequisites
-- **Node.js** v22.12+
-- **Rust** (via [rustup](https://rustup.rs))
-- **C++ Build Tools** (Windows: Visual Studio Build Tools)
+*   **Global Hotkey (Overlay):** Press `Alt+Space` to summon the floating HUD anywhere.
+*   **Silence Guard (VAD):** Integrated Voice Activity Detection based on RMS amplitude. Prevents processing of silence, saving costs and eliminating hallucinations.
+*   **Raw Mode:** Bypass the LLM post-processing entirely for direct, verbatim transcription.
+*   **Explicit Language Force:** Overrides auto-detection to enforce specific language biases (e.g., ensuring "Deutsch" is widely recognized even with short utterances).
 
-### 1. Dependencies installieren
+---
+
+## � Roadmap: Vision 2026
+
+We are building the future of desktop interaction. Here is what's next:
+
+### 🤖 Auto-Skill Router (SLM-based)
+Instead of manually selecting "Email" or "To-Do", a lightweight **Small Language Model (SLM)** will analyze the intent of your dictation in real-time.
+*   *Use Case:* User says "Schedule a meeting with Peter at 2 PM" -> Router detects "Calendar Intent" -> Activates "Action Item Skill" automatically.
+
+### ⚙️ Custom Skill Generator (Prompt-as-Code)
+A "No-Code" interface allowing users to define persistent personas.
+*   *Technik:* Define System Prompts (e.g., "Answer like a Pirate", "Format as Jira JSON") that are stored as custom skills.
+
+### 🧠 Local RAG (Context Awareness)
+Connect your local LLM to your personal knowledge base (e.g., Obsidian Vault, PDF folder).
+*   *Goal:* The AI understands *your* context (project names, acronyms) without ever uploading your documents to a cloud vector store.
+
+---
+
+## 🛠️ Setup Guide (BYOE)
+
+This application requires external engines for the **Local Mode**. Follow these steps to enable full offline capabilities:
+
+### 1. Prerequisites
+*   **FFmpeg:** Required for audio processing (WebM -> WAV conversion).
+    *   [Download FFmpeg](https://ffmpeg.org/download.html) and add it to your **System PATH**.
+    *   *Note:* If you add FFmpeg to your System PATH, you can leave the "FFmpeg Path" in settings **empty**. Only define it if you use a portable version not globally installed.
+
+### 2. Whisper Engine (STT)
+1.  Download a `whisper-cli` binary (e.g., from [whisper.cpp releases](https://github.com/ggerganov/whisper.cpp/releases)).
+    *   *Windows:* `main.exe` or `whisper-cli.exe`.
+2.  Download a Model file (`.bin`) (e.g., `ggml-base.bin` or `ggml-medium.bin` from HuggingFace).
+3.  **In App Settings:** Enter the absolute paths to both the binary and the model file.
+
+### 3. Ollama (LLM)
+1.  Download and install [Ollama](https://ollama.com).
+2.  Run `ollama serve` in a terminal.
+3.  Pull the model: `ollama pull llama3`.
+
+### 4. Configuration
+Open the Capsule Settings (`Alt+Space` -> Gear Icon):
+*   Toggle **Local Mode (Offline)** to ON.
+*   Verify the paths are green/accepted.
+*   Start speaking!
+
+---
+
+## 💻 Development & Build
+
+### Install Dependencies
 ```bash
-cd voice-intelligence
 npm install
 ```
 
-### 2. Environment konfigurieren
-```bash
-# .env erstellen (im src-tauri Ordner)
-cd src-tauri
-echo "GROQ_API_KEY=gsk_your_key_here" > .env
-echo "PREFERRED_LANGUAGE=de" >> .env
-cd ..
-```
-
-### 3. Development Server starten
+### Run in Development Mode
+Starts the React frontend and Rust backend with hot-reloading.
 ```bash
 npm run tauri dev
 ```
 
----
-
-## 📦 Production Build
-
-Erstellt eine **eigenständige Desktop-App** ohne externe Abhängigkeiten:
-
+### Build for Production
+Creates an optimized executable (`.exe`) in `src-tauri/target/release/bundle/nsis/`.
 ```bash
 npm run tauri build
 ```
 
-Die Installer findest du unter:
-- **Windows EXE:** `src-tauri/target/release/bundle/nsis/voice-intelligence_*_x64-setup.exe`
-- **Windows MSI:** `src-tauri/target/release/bundle/msi/voice-intelligence_*_x64_en-US.msi`
-
-> 💡 **Hinweis:** Die `.env`-Datei muss im selben Verzeichnis wie die EXE liegen, oder `GROQ_API_KEY` als System-Umgebungsvariable gesetzt sein.
-
 ---
 
-## 📖 Bedienungsanleitung
-
-| Schritt | Aktion | Ergebnis |
-|---------|--------|----------|
-| 1️⃣ | App starten | Läuft unsichtbar im System-Tray |
-| 2️⃣ | `Alt + Space` drücken | HUD erscheint (transparentes Overlay) |
-| 3️⃣ | Sprechen | Audio-Visualizer zeigt Aufnahme |
-| 4️⃣ | Pause machen | Verarbeitung startet automatisch |
-| 5️⃣ | Warten | Text wird an Cursor-Position getippt |
-
-### 🎯 Skills nutzen
-
-| Trigger-Phrase | Aktion |
-|----------------|--------|
-| *"Fasse zusammen: [Text]"* | Erstellt Bullet-Point-Zusammenfassung |
-| *(ohne Trigger)* | Silent Editor: Korrigiert nur Grammatik/Format |
-
-### Skills erweitern
-Erstelle neue Skills als Markdown-Dateien in `/skills/`:
-
-```yaml
----
-name: "Mein Skill"
-description: "Was der Skill macht"
-trigger_keywords: ["aktiviere", "mach"]
----
-Hier steht die Anweisung für die KI...
-```
-
----
-
-## 📁 Projektstruktur
-
-```
-voice-intelligence/
-├── src/                    # React Frontend
-│   ├── components/         # UI-Komponenten (Visualizer, Status)
-│   └── hooks/              # Audio Recording Hook
-├── src-tauri/              # Rust Backend
-│   ├── src/
-│   │   ├── llm/            # Groq API Clients (Whisper + Llama)
-│   │   ├── skills/         # Skill Loader
-│   │   └── input/          # Keyboard Injection (enigo)
-│   └── tauri.conf.json     # App-Konfiguration
-├── skills/                 # Benutzerdefinierte Skills
-│   └── summary.md          # Zusammenfassungs-Skill
-├── plan.md                 # Implementierungsplan
-└── spec.md                 # UI-Spezifikation
-```
-
----
-
-## 📜 Lizenz
-
-MIT © 2026
+**Developed with ❤️ in Rust & TypeScript.**
