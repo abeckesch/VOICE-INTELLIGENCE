@@ -1,8 +1,8 @@
 //! Groq Whisper v3 Turbo API Client
-//! 
+//!
 //! Sends audio data to Groq's Whisper API for speech-to-text transcription.
 
-use reqwest::{Client, multipart};
+use reqwest::{multipart, Client};
 use serde::Deserialize;
 
 /// Response structure from Groq Whisper API

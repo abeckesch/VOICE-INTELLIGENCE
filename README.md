@@ -4,8 +4,8 @@
 
 ![Tauri v2](https://img.shields.io/badge/Tauri_v2-FCC019?style=for-the-badge&logo=tauri&logoColor=black)
 ![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)
-![Local AI](https://img.shields.io/badge/Local_AI-Privacy-purple?style=for-the-badge)
-![Privacy Focused](https://img.shields.io/badge/Privacy-Focused-success?style=for-the-badge)
+![Local AI](https://img.shields.io/badge/AI-Local-blueviolet?style=for-the-badge)
+![Privacy Focused](https://img.shields.io/badge/Data-Private-success?style=for-the-badge)
 
 **Problem:** Traditional voice dictation tools send your sensitive audio data to the cloud, creating privacy risks and dependencies on internet connectivity.
 **Solution:** The Voice Intelligence Capsule implements a **Dual-Engine Architecture**. Choose between **Groq Cloud** for lightning-fast latency (<1s) or **Local Mode** for absolute data sovereignty (Air-Gapped).
@@ -32,10 +32,11 @@ Runs 100% on your device. **No data leaves your machine.**
 
 ## ✨ Feature Highlights
 
-*   **Global Hotkey (Overlay):** Press `Alt+Space` to summon the floating HUD anywhere.
-*   **Silence Guard (VAD):** Integrated Voice Activity Detection based on RMS amplitude. Prevents processing of silence, saving costs and eliminating hallucinations.
-*   **Raw Mode:** Bypass the LLM post-processing entirely for direct, verbatim transcription.
-*   **Explicit Language Force:** Overrides auto-detection to enforce specific language biases (e.g., ensuring "Deutsch" is widely recognized even with short utterances).
+*   **Instant Access (Floating HUD):** Press `Alt+Space` to summon the capsule. Smart Z-Index ensures it stays **Always-On-Top**, even over full-screen apps.
+*   **True Privacy (Local Mode):** Switch to offline mode with one click (after initial setup). Runs Whisper & Llama3 entirely on your device for maximum data sovereignty.
+*   **Smart Silence Guard (VAD):** Innovative RMS-based gatekeeper. Detects silence (< 150ms) and aborts processing instantly. Prevents "Thank you" hallucinations and saves API costs.
+*   **Skill-Based Processing:** Dictate with intent. Choose between **Standard** (Polishing), **Email** (Drafting), **To-Do** (Action Items), or **Summary** (Bullet points).
+*   **Language Anchoring:** Enforce a specific language (e.g., German) to prevent Whisper from switching to English on short commands.
 
 ---
 
@@ -103,6 +104,20 @@ Creates an optimized executable (`.exe`) in `src-tauri/target/release/bundle/nsi
 ```bash
 npm run tauri build
 ```
+
+---
+
+
+
+## 🧩 Tech Stack (Under the Hood)
+
+| Component | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, TypeScript, TailwindCSS v4, Lucide Icons |
+| **Backend** | Rust, Tauri v2 (Capabilities, Windowing, Tray) |
+| **Audio** | FFmpeg (Processing), cpal/MediaRecorder (Capture) |
+| **AI (Cloud)** | Groq API (Whisper v3 Turbo + Llama 3) |
+| **AI (Local)** | Whisper.cpp (C++ Bindings), Ollama (Local REST API) |
 
 ---
 

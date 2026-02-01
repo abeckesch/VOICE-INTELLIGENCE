@@ -34,7 +34,7 @@ function StatusLabel({ state, isPrivacyMode, isPaused }: { state: RecordingState
   const labels: Record<RecordingState, string> = {
     idle: "Bereit",
     recording: "Höre zu...",
-    processing: isPrivacyMode ? "Local Intelligence 🛡️" : "Verarbeite... ⚡",
+    processing: isPrivacyMode ? "Verarbeite..." : "Verarbeite...",
   };
 
   return (

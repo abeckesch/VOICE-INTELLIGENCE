@@ -11,7 +11,7 @@ Fokus: Maximale Geschwindigkeit (Cloud) oder maximale Privatsphäre (Local).
     *   **Input Gate:** Audio -> Micro -> VAD (Silence Guard).
     *   **Branch A (Cloud):** Audio -> Groq Whisper -> Groq Llama3 -> UI.
     *   **Branch B (Local):** Audio -> Whisper.cpp -> Ollama (Llama3) -> UI.
-    *   **Branch C (Raw):** Audio -> Whisper -> UI (Bypass LLM).
+
 4.  **Output:** Text wird via Keyboard-Simulation an der Cursor-Position eingefügt + Clipboard-Backup.
 
 ## 3. Technische Anforderungen & Stack
@@ -35,10 +35,6 @@ Nutzt die extrem schnelle Infrastruktur von Groq.
 *   **Konfiguration:** User muss Pfade zu Binary und Modell in den Settings hinterlegen.
 *   **Vorteil:** 100% Offline, keine Daten verlassen das Gerät.
 
-#### 3. Raw Mode (Bypass)
-Reines Diktat ohne intelligente Nachbearbeitung.
-*   **Flow:** Audio -> STT -> Text Output.
-*   **Use Case:** Schnellstmögliche Transkription, Rohdaten.
 
 ### C. Skill-System
 Skills sind spezialisierte Verarbeitungs-Pipelines.
